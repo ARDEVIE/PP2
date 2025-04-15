@@ -1,6 +1,29 @@
 import psycopg2
 
 
+def create_table_if_not_exists():
+    """Создаёт таблицу phonebook, если она ещё не существует"""
+    sql = """
+    CREATE TABLE IF NOT EXISTS phonebook (
+        user_id SERIAL PRIMARY KEY,
+        name VARCHAR(100) NOT NULL,
+        phone_number VARCHAR(20) NOT NULL
+    );
+    """
+    try:
+        with psycopg2.connect(
+            dbname='pbook',
+            user='postgres',
+            password='12345',
+            host='localhost'
+        ) as conn:
+            with conn.cursor() as cur:
+                cur.execute(sql)
+            conn.commit()
+    except (Exception, psycopg2.DatabaseError) as error:
+        print("Ошибка при создании таблицы:", error)
+
+
 def collecting_info():
     """ Извлекать данные из таблицы phonebook """
     try:
@@ -93,6 +116,7 @@ def insert_contact(name, phone_number):
     finally:
         return user_id
 
+
 def search_contacts():
     """ Поиск контактов по фильтрам """
     print("\nФильтры:")
@@ -132,13 +156,14 @@ def search_contacts():
         print(error)
 
 
-
 if __name__ == '__main__':
+    create_table_if_not_exists()  # создаёт таблицу при запуске, если её нет
+
     operation = input("Выберите:\n1 - записать контакт\n2 - обновить контакт\n3 - показать все контакты\n4 - показать контакт (фильтр)\n5 - удалить контакт\n")
-    
+
     if operation == "1":
         name = input("Введите имя нового контакта: ")
-        phone_number = int(input("Введите номер телефона: "))
+        phone_number = input("Введите номер телефона: ")
         user_id = insert_contact(name, phone_number)
         if user_id is not None:
             print("Контакт успешно добавлен. ID:", user_id)
@@ -148,10 +173,10 @@ if __name__ == '__main__':
     elif operation == "2":
         user_id = int(input("Введите ID контакта для обновления: "))
         name = input("Введите новое имя: ")
-        phone_number = int(input("Введите новый номер телефона: "))
+        phone_number = input("Введите новый номер телефона: ")
         updt = update_info(user_id, name, phone_number)
         if updt:
-            print("Контакт успешно обновлен.")
+            print("Контакт успешно обновлён.")
         else:
             print("Контакт не найден или ошибка.")
     
@@ -165,7 +190,6 @@ if __name__ == '__main__':
         user_id = int(input("Введите ID контакта для удаления: "))
         dlt = delete_info(user_id)
         if dlt:
-            print("Контакт успешно удален.")
+            print("Контакт успешно удалён.")
         else:
             print("Контакт не найден или ошибка.")
-    

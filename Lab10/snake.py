@@ -12,17 +12,60 @@ conn = psycopg2.connect(
 )
 cursor = conn.cursor()
 
+# === СОЗДАНИЕ ТАБЛИЦ ===
+def create_tables():
+    user_table = """
+    CREATE TABLE IF NOT EXISTS "user" (
+        user_id SERIAL PRIMARY KEY,
+        user_name VARCHAR(100) UNIQUE NOT NULL
+    );
+    """
+
+    user_score_table = """
+    CREATE TABLE IF NOT EXISTS user_score (
+        id SERIAL PRIMARY KEY,
+        user_id INTEGER REFERENCES "user"(user_id) ON DELETE CASCADE,
+        score INTEGER NOT NULL,
+        level INTEGER NOT NULL,
+        UNIQUE(user_id)
+    );
+    """
+
+    try:
+        cursor.execute(user_table)
+        cursor.execute(user_score_table)
+        conn.commit()
+    except Exception as e:
+        print("Ошибка при создании таблиц:", e)
+
+create_tables()
+
 # === ФУНКЦИЯ ДОБАВЛЕНИЯ ПОЛЬЗОВАТЕЛЯ И ЕГО СЧЕТА ===
 def insert_user(user_name, score, level):
-    sql = """INSERT INTO user_score (user_name, score, level)
-             VALUES (%s, %s, %s)
-             ON CONFLICT (user_name)
-             DO UPDATE SET score = EXCLUDED.score, level = EXCLUDED.level
-             RETURNING user_name;"""
     try:
-        cursor.execute(sql, (user_name, score, level))
+        cursor.execute(
+            """INSERT INTO "user" (user_name)
+               VALUES (%s)
+               ON CONFLICT (user_name) DO NOTHING""",
+            (user_name,)
+        )
+
+        cursor.execute(
+            """SELECT user_id FROM "user" WHERE user_name = %s""",
+            (user_name,)
+        )
+        user_id = cursor.fetchone()[0]
+
+        cursor.execute(
+            """INSERT INTO user_score (user_id, score, level)
+               VALUES (%s, %s, %s)
+               ON CONFLICT (user_id)
+               DO UPDATE SET score = EXCLUDED.score, level = EXCLUDED.level
+               RETURNING user_id;""",
+            (user_id, score, level)
+        )
         conn.commit()
-        return cursor.fetchone()[0]
+        return user_id
     except Exception as error:
         print("Ошибка при сохранении:", error)
         return None
